@@ -13,9 +13,26 @@ app.use(cors({
 
 const BASE = 'https://fakerestapi.azurewebsites.net';
 
+// Health-check simple
+app.get('/', (_req, res) => {
+  res.json({ ok: true });
+});
+
+// Helper: fetch con timeout
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { ...options, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 app.get('/users', async (req, res) => {
   try {
-    const r = await fetch(`${BASE}/api/v1/Users`);
+    const r = await fetchWithTimeout(`${BASE}/api/v1/Users`);
     const data = await r.json();
     res.status(r.ok ? 200 : r.status).json(data);
   } catch (e) {
@@ -25,7 +42,7 @@ app.get('/users', async (req, res) => {
 
 app.get('/users/:id', async (req, res) => {
   try {
-    const r = await fetch(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`);
+    const r = await fetchWithTimeout(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`);
     if (!r.ok) {
       return res.status(r.status).json({ error: `Upstream returned ${r.status}` });
     }
@@ -38,7 +55,7 @@ app.get('/users/:id', async (req, res) => {
 
 app.post('/users', async (req, res) => {
   try {
-    const r = await fetch(`${BASE}/api/v1/Users`, {
+    const r = await fetchWithTimeout(`${BASE}/api/v1/Users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body ?? {}),
@@ -52,7 +69,7 @@ app.post('/users', async (req, res) => {
 
 app.put('/users/:id', async (req, res) => {
   try {
-    const r = await fetch(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`, {
+    const r = await fetchWithTimeout(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body ?? {}),
@@ -66,7 +83,7 @@ app.put('/users/:id', async (req, res) => {
 
 app.delete('/users/:id', async (req, res) => {
   try {
-    const r = await fetch(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`, {
+    const r = await fetchWithTimeout(`${BASE}/api/v1/Users/${encodeURIComponent(req.params.id)}`, {
       method: 'DELETE',
     });
     // Some APIs return empty body on DELETE
